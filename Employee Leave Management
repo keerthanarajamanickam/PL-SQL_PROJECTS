@@ -1,0 +1,60 @@
+                                                                                 --EMPLOYEE LEAVE MANAGEMENT SYSTEM--
+--TABLES
+--Employee Details
+CREATE TABLE emps(emp_id NUMBER ,emp_name VARCHAR2(30), dep_name VARCHAR2(20));
+ALTER TABLE emps ADD PRIMARY KEY(emp_id);
+
+--Leave Types (Sick, Casual)
+CREATE TABLE leave_types(leave_type_id NUMBER, leave_type_name VARCHAR2(30), max_days NUMBER);
+ALTER TABLE leave_types ADD PRIMARY KEY(leave_type_id);
+
+--Employee leave balance
+CREATE TABLE balance_leave(emp_id NUMBER, leave_type_id NUMBER ,remaining_days NUMBER, FOREIGN KEY(emp_id) REFERENCES emps(emp_id), FOREIGN KEY(leave_type_id) REFERENCES leave_types(leave_type_id));
+
+--Leave Requests
+CREATE TABLE request_leave(request_id NUMBER, emp_id NUMBER REFERENCES emps(emp_id),leave_type_id NUMBER REFERENCES leave_types(leave_type_id), days_requested NUMBER,status VARCHAR2(20));
+
+
+--PROCEDURE -> Apply for leave
+CREATE OR REPLACE PROCEDURE apply_for_leave(p_request_id NUMBER,p_emp_id NUMBER, p_leave_type_id NUMBER, p_days NUMBER)
+AS
+v_balance NUMBER;
+BEGIN
+   select remaining_days into v_balance from balance_leave where emp_id=p_emp_id and leave_type_id= p_leave_type_id;
+   
+   IF v_balance >= p_days THEN
+      INSERT INTO request_leave values(p_request_id,p_emp_id,p_leave_type_id,p_days,'Approved');
+      UPDATE balance_leave set remaining_days=remaining_days - p_days where emp_id=p_emp_id and leave_type_id = p_leave_type_id;
+      
+      DBMS_OUTPUT.PUT_LINE('Leave Approved for Employee ' || p_emp_id);
+    ELSE
+      INSERT INTO request_leave values(p_request_id,p_emp_id, p_leave_type_id, p_days,'Rejected');
+      DBMS_OUTPUT.PUT_LINE('Leave Rejected: Insufficient balance');
+    END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('Error: Employee or Leave Type not found.');
+END;
+
+--Function -> Check Remaining leaves
+CREATE OR REPLACE FUNCTION check_balance_leave(p_emp_id NUMBER, p_leave_type_id NUMBER)
+RETURN NUMBER
+AS
+v_balance NUMBER;
+BEGIN
+  SELECT remaining_days into v_balance from balance_leave where emp_id=p_emp_id and leave_type_id= p_leave_type_id;
+  return v_balance;
+EXCEPTION
+  WHEN others THEN 
+    RETURN -1;
+END;
+
+--Trigger -> Prevent negative balance
+CREATE OR REPLACE TRIGGER prevent_negative_balance BEFORE UPDATE ON BALANCE_LEAVE
+FOR EACH ROW
+BEGIN
+  IF :NEW.remaining_days < 0 THEN
+    RAISE_APPLICATION_ERROR(-20001,'Leave Balance cannot be negative');
+  END IF;
+END;
+/
