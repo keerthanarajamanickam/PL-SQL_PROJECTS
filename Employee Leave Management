@@ -58,3 +58,13 @@ BEGIN
   END IF;
 END;
 /
+
+--Sample Execution
+BEGIN
+  apply_for_leave(13, 1, 101,5);
+END;
+/
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('Remaining Casual Leaves For Employee 2: ' || check_balance_leave(2,102));
+END;
