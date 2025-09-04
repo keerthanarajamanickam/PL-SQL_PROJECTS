@@ -1,0 +1,58 @@
+                                                                                 --STUDENT MANAGEMENT SYSTEM--
+--TABLES
+
+CREATE TABLE studs(sId NUMBER PRIMARY KEY,sName VARCHAR2(30),course VARCHAR2(20));
+ALTER TABLE studs RENAME COLUMN sId TO studId;
+ALTER TABLE studs RENAME COLUMN sNaME TO studName;
+CREATE TABLE subjects(subId NUMBER PRIMARY KEY, subName VARCHAR2(30));
+CREATE TABLE marks(mId NUMBER PRIMARY KEY,studId NUMBER REFERENCES studs(studId), subId NUMBER REFERENCES subjects(subId),marks NUMBER(3) CHECK(marks BETWEEN 0 AND 100));
+
+--PROCEDURE -> INSERT MARKS
+CREATE OR REPLACE PROCEDURE add_marks(p_mId NUMBER,p_studId NUMBER, p_subId NUMBER,p_marks NUMBER)
+IS
+BEGIN
+  INSERT INTO MARKS VALUES(p_mId,p_studId,p_subId,p_marks);
+  DBMS_OUTPUT.PUT_LINE('Marks Inserted Successfully..');
+EXCEPTION
+  WHEN others THEN
+    DBMS_OUTPUT.PUT_LINE('ERROE..' || SQLERRM);
+END;
+/
+
+--FUNCTION -> CALCULATE GPA
+CREATE OR REPLACE FUNCTION calc_gpa(p_studId NUMBER)
+RETURN NUMBER
+IS
+  v_avg NUMBER;
+BEGIN
+  SELECT AVG(MARKS) INTO v_avg from MARKS WHERE studId=p_studId;
+  RETURN ROUND(v_avg/10, 2);
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+    RETURN 0;
+END;
+/
+
+--TRIGGER -> VALIDATE MARKS
+CREATE OR REPLACE TRIGGER check_marks
+BEFORE INSERT OR UPDATE  ON MARKS
+FOR EACH ROW
+BEGIN
+  IF :NEW.marks < 0 OR :NEW.marks > 100 THEN
+    RAISE_APPLICATION_ERROR(-20001,'Marks must be between 0 an 100');
+  END IF;
+END;
+/
+
+--SAMPLE EXECUTION
+BEGIN
+  add_marks(08,2,103,80);
+END;
+/
+
+DECLARE
+  v_gpa NUMBER;
+BEGIN
+  v_gpa := calc_gpa(1);
+  DBMS_OUTPUT.PUT_LINE('GPA of Student : ' || v_gpa);
+END;
