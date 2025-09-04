@@ -59,7 +59,7 @@ BEGIN
 END;
 /
 
---Sample Execution
+--SAMPLE EXECUTION
 BEGIN
   apply_for_leave(13, 1, 101,5);
 END;
